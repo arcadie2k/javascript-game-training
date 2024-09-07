@@ -21,6 +21,7 @@
 }
 
 #obstacles,
-#bull {
+#bull,
+#egg {
   display: none;
 }
