@@ -364,7 +364,7 @@ window.addEventListener("load", () => {
       if (this.collisionY < this.game.topMargin) {
         this.markedForDeletion = true;
         this.game.removeGameObjects();
-        this.game.score++;
+        if (!this.game.gameOver) this.game.score++;
         for (let i = 0; i < 10; i++) {
           this.game.particles.push(
             new Firefly(this.game, this.collisionX, this.collisionY, "yellow")
@@ -413,7 +413,7 @@ window.addEventListener("load", () => {
       this.game = game;
       this.collisionRadius = 30;
       this.speedX = Math.random() * 3 + 5;
-      this.image = document.getElementById("toad");
+      this.image = document.getElementById("toads");
       this.spriteWidth = 140;
       this.spriteHeight = 260;
       this.width = this.spriteWidth;
@@ -425,6 +425,8 @@ window.addEventListener("load", () => {
         Math.random() * (this.game.height - this.game.topMargin);
       this.spriteX;
       this.spriteY;
+      this.frameX = 0;
+      this.frameY = Math.floor(Math.random() * 4);
     }
 
     /**
@@ -432,7 +434,17 @@ window.addEventListener("load", () => {
      * @param {CanvasRenderingContext2D} context
      */
     draw(context) {
-      context.drawImage(this.image, this.spriteX, this.spriteY);
+      context.drawImage(
+        this.image,
+        this.frameX * this.spriteWidth,
+        this.frameY * this.spriteHeight,
+        this.spriteWidth,
+        this.spriteHeight,
+        this.spriteX,
+        this.spriteY,
+        this.width,
+        this.height
+      );
 
       if (this.game.debug) {
         context.beginPath();
@@ -457,13 +469,17 @@ window.addEventListener("load", () => {
       this.spriteY = this.collisionY - this.height + 60;
       this.collisionX -= this.speedX;
 
-      if (this.spriteX + this.width < 0) {
+      // Reset position on reach left edge
+      if (this.spriteX + this.width < 0 && !this.game.gameOver) {
         this.collisionX =
           this.game.width + this.width + Math.random() * this.game.width * 0.5;
 
         this.collisionY =
           this.game.topMargin +
           Math.random() * (this.game.height - this.game.topMargin);
+
+        this.frameX = 0;
+        this.frameY = Math.floor(Math.random() * 4);
       }
 
       let collisionObjects = [this.game.player, ...this.game.obstacles];
@@ -570,10 +586,12 @@ window.addEventListener("load", () => {
         pressed: false,
       };
       this.score = 0;
+      this.winScore = 5;
       this.lostHatchings = 0;
       this.gameObjects = [];
       this.numberOfObstacles = 10;
       this.obstacles = [];
+      this.gameOver = false;
 
       // Eggs
       this.eggTimer = 0;
@@ -650,26 +668,57 @@ window.addEventListener("load", () => {
           object.update(deltaTime);
         });
 
+        // Draw status text
+        context.save();
+        context.textAlign = "left";
+        context.font = "25px Arial";
+        context.fillText("Score: " + this.score, 25, 50);
+        context.fillText("Lost: " + this.lostHatchings, 25, 100);
+        context.restore();
+
+        // Win / Lose
+        if (this.score >= this.winScore) {
+          this.gameOver = true;
+          context.save();
+          context.fillStyle = "rgba(0, 0, 0, 0.5)";
+          context.fillRect(0, 0, this.width, this.height);
+          context.fillStyle = "white";
+          context.textAlign = "center";
+          let message1;
+          let message2;
+
+          if (this.lostHatchings <= 5) {
+            message1 = "You win!";
+            message2 = "You are a great protector!";
+          } else {
+            message1 = "You lost!";
+            message2 = "Try again!";
+          }
+
+          context.font = "130px Helvetica";
+          context.fillText(message1, this.width * 0.5, this.height * 0.5 - 100);
+          context.font = "60px Helvetica";
+          context.fillText(message2, this.width * 0.5, this.height * 0.5 + 100);
+
+          context.restore();
+        }
+
         this.timer = 0;
       }
 
       this.timer += deltaTime;
 
       // Add eggs periodically
-      if (this.eggTimer > this.eggInterval && this.eggs.length < this.maxEggs) {
+      if (
+        !this.gameOver &&
+        this.eggTimer > this.eggInterval &&
+        this.eggs.length < this.maxEggs
+      ) {
         this.addEgg();
         this.eggTimer = 0;
       } else {
         this.eggTimer += deltaTime;
       }
-
-      // Draw status text
-      context.save();
-      context.textAlign = "left";
-      context.font = "25px Arial";
-      context.fillText("Score: " + this.score, 25, 50);
-      context.fillText("Lost: " + this.lostHatchings, 25, 100);
-      context.restore();
     }
 
     removeGameObjects() {
@@ -726,7 +775,7 @@ window.addEventListener("load", () => {
     lastTime = timeStamp;
 
     game.render(ctx, deltaTime);
-    window.requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
   }
 
   animate();
